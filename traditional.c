@@ -49,14 +49,14 @@ void start_server(struct start_server_args * args)
                                      args->server_L->h_length) == 0) {
             args->sockfd_L = newsockfd;
             char * addr = args->server_L->h_addr_list[0];
-            printf("recv L: %d.%d.%d.%d", addr[0], addr[1], addr[2], addr[3]);
+            printf("recv L: %d.%d.%d.%d\n", addr[0], addr[1], addr[2], addr[3]);
         } else {
             assert(args->server_R && memcmp(&cli_addr.sin_addr.s_addr,
                                             args->server_R->h_addr_list[0],
                                             args->server_R->h_length) == 0);
             args->sockfd_R = newsockfd;
             char * addr = args->server_R->h_addr_list[0];
-            printf("recv R: %d.%d.%d.%d", addr[0], addr[1], addr[2], addr[3]);
+            printf("recv R: %d.%d.%d.%d\n", addr[0], addr[1], addr[2], addr[3]);
         }
     }
     pthread_exit(0);
@@ -73,12 +73,12 @@ int connect_to(struct hostent * server)
               server->h_length);
         serv_addr.sin_port = htons(8080);
         char * addr = server->h_addr_list[0];
-        printf("attempting: %d.%d.%d.%d", addr[0], addr[1], addr[2], addr[3]);
+        printf("attempting: %d.%d.%d.%d\n", addr[0], addr[1], addr[2], addr[3]);
         while (sockfd < 0) {
             connect(sockfd, (struct sockaddr*)&serv_addr,
                               sizeof(serv_addr));
         }
-        printf("connected: %d.%d.%d.%d", addr[0], addr[1], addr[2], addr[3]);
+        printf("connected: %d.%d.%d.%d\n", addr[0], addr[1], addr[2], addr[3]);
     }
     return sockfd;
 }
@@ -104,8 +104,8 @@ int main(int argc, char *argv[])
         if (server_R && receiver.sockfd_R <0) {}
         else { break; }
     }
-    printf("L: (%d %d); R: (%d %d)", receiver.sockfd_L, sockfd_L,
-                                     receiver.sockfd_R, sockfd_R);
+    printf("L: (%d %d); R: (%d %d)\n", receiver.sockfd_L, sockfd_L,
+                                       receiver.sockfd_R, sockfd_R);
 
     return 0; 
 }
