@@ -34,7 +34,7 @@ void start_server(struct start_server_args * args)
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(30000);
+    serv_addr.sin_port = htons(8080);
     assert(bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr))
            >= 0);
     listen(sockfd,10);
@@ -48,11 +48,15 @@ void start_server(struct start_server_args * args)
                                      args->server_L->h_addr_list[0],
                                      args->server_L->h_length) == 0) {
             args->sockfd_L = newsockfd;
+            unsigned char * addr = args->server_L->h_addr_list[0];
+            printf("recv L: %u.%u.%u.%u\n", addr[0], addr[1], addr[2], addr[3]);
         } else {
             assert(args->server_R && memcmp(&cli_addr.sin_addr.s_addr,
                                             args->server_R->h_addr_list[0],
                                             args->server_R->h_length) == 0);
             args->sockfd_R = newsockfd;
+            unsigned char * addr = args->server_R->h_addr_list[0];
+            printf("recv R: %u.%u.%u.%u\n", addr[0], addr[1], addr[2], addr[3]);
         }
     }
     pthread_exit(0);
@@ -67,11 +71,14 @@ int connect_to(struct hostent * server)
         serv_addr.sin_family = AF_INET;
         bcopy(server->h_addr_list[0], &serv_addr.sin_addr.s_addr,
               server->h_length);
-        serv_addr.sin_port = htons(8000);
+        serv_addr.sin_port = htons(8080);
+        unsigned char * addr = server->h_addr_list[0];
+        printf("attempting: %u.%u.%u.%u\n", addr[0], addr[1], addr[2], addr[3]);
         while (sockfd < 0) {
             connect(sockfd, (struct sockaddr*)&serv_addr,
                               sizeof(serv_addr));
         }
+        printf("connected: %u.%u.%u.%u\n", addr[0], addr[1], addr[2], addr[3]);
     }
     return sockfd;
 }
@@ -79,8 +86,9 @@ int connect_to(struct hostent * server)
 int main(int argc, char *argv[])
 {
     assert (argc == 3);
-    struct hostent * server_L = gethostbyname(argv[1]);
-    struct hostent * server_R = gethostbyname(argv[2]);
+    struct hostent * server_L = 0, * server_R = 0;
+    if (strcmp(argv[1], "0")) server_L = gethostbyname(argv[1]);
+    if (strcmp(argv[2], "0")) server_R = gethostbyname(argv[2]);
 
     struct start_server_args receiver;
     receiver.server_L = server_L;
@@ -97,8 +105,8 @@ int main(int argc, char *argv[])
         if (server_R && receiver.sockfd_R <0) {}
         else { break; }
     }
-    printf("L: (%d %d); R: (%d %d)", receiver.sockfd_L, sockfd_L,
-                                     receiver.sockfd_R, sockfd_R);
+    printf("L: (%d %d); R: (%d %d)\n", receiver.sockfd_L, sockfd_L,
+                                       receiver.sockfd_R, sockfd_R);
 
     return 0; 
 }
