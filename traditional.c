@@ -6,6 +6,7 @@
 #include <string.h>
 #include <strings.h>
 #include <unistd.h>
+#include <errno.h>
 #include <sys/types.h> 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -37,7 +38,7 @@ void start_server(struct start_server_args * args)
     serv_addr.sin_port = htons(8080);
     int ret = bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
     if (ret < 0) {
-        printf("ret = %d\n", ret);
+        printf("errno = %d\n", errno);
         exit(0);
     }
     listen(sockfd,10);
