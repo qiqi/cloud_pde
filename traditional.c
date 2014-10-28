@@ -48,11 +48,15 @@ void start_server(struct start_server_args * args)
                                      args->server_L->h_addr_list[0],
                                      args->server_L->h_length) == 0) {
             args->sockfd_L = newsockfd;
+            char * addr = args->server_L->h_addr_list[0];
+            printf("recv L: %d.%d.%d.%d", addr[0], addr[1], addr[2], addr[3]);
         } else {
             assert(args->server_R && memcmp(&cli_addr.sin_addr.s_addr,
                                             args->server_R->h_addr_list[0],
                                             args->server_R->h_length) == 0);
             args->sockfd_R = newsockfd;
+            char * addr = args->server_R->h_addr_list[0];
+            printf("recv R: %d.%d.%d.%d", addr[0], addr[1], addr[2], addr[3]);
         }
     }
     pthread_exit(0);
@@ -72,6 +76,8 @@ int connect_to(struct hostent * server)
             connect(sockfd, (struct sockaddr*)&serv_addr,
                               sizeof(serv_addr));
         }
+        char * addr = server->h_addr_list[0];
+        printf("connected: %d.%d.%d.%d", addr[0], addr[1], addr[2], addr[3]);
     }
     return sockfd;
 }
