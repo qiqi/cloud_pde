@@ -35,8 +35,11 @@ void start_server(struct start_server_args * args)
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
     serv_addr.sin_port = htons(8080);
-    assert(bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr))
-           >= 0);
+    int ret = bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr));
+    if (ret < 0) {
+        printf("ret = %d\n", ret);
+        exit(0);
+    }
     listen(sockfd,10);
 
     for (int i_sock = 0; i_sock < 2; ++ i_sock) {
