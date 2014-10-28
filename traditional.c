@@ -34,7 +34,7 @@ void start_server(struct start_server_args * args)
     bzero((char *) &serv_addr, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons(30000);
+    serv_addr.sin_port = htons(8080);
     assert(bind(sockfd, (struct sockaddr *) &serv_addr, sizeof(serv_addr))
            >= 0);
     listen(sockfd,10);
