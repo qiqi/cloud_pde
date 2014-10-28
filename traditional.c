@@ -40,6 +40,7 @@ void start_server(struct start_server_args * args)
     listen(sockfd,10);
 
     for (int i_sock = 0; i_sock < 2; ++ i_sock) {
+        printf("listening\n");
         struct sockaddr_in cli_addr;
         socklen_t clilen = sizeof(cli_addr);
         int newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
@@ -74,9 +75,10 @@ int connect_to(struct hostent * server)
         serv_addr.sin_port = htons(8080);
         unsigned char * addr = server->h_addr_list[0];
         printf("attempting: %u.%u.%u.%u\n", addr[0], addr[1], addr[2], addr[3]);
-        while (sockfd < 0) {
-            connect(sockfd, (struct sockaddr*)&serv_addr,
-                              sizeof(serv_addr));
+        sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        while (connect(sockfd, (struct sockaddr*)&serv_addr,
+                       sizeof(serv_addr)) < 0) {
+            sleep(1);
         }
         printf("connected: %u.%u.%u.%u\n", addr[0], addr[1], addr[2], addr[3]);
     }
