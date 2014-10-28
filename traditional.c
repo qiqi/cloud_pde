@@ -67,7 +67,7 @@ int connect_to(struct hostent * server)
         serv_addr.sin_family = AF_INET;
         bcopy(server->h_addr_list[0], &serv_addr.sin_addr.s_addr,
               server->h_length);
-        serv_addr.sin_port = htons(8000);
+        serv_addr.sin_port = htons(8080);
         while (sockfd < 0) {
             connect(sockfd, (struct sockaddr*)&serv_addr,
                               sizeof(serv_addr));
