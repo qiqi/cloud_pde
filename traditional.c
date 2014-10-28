@@ -72,11 +72,12 @@ int connect_to(struct hostent * server)
         bcopy(server->h_addr_list[0], &serv_addr.sin_addr.s_addr,
               server->h_length);
         serv_addr.sin_port = htons(8080);
+        char * addr = server->h_addr_list[0];
+        printf("attempting: %d.%d.%d.%d", addr[0], addr[1], addr[2], addr[3]);
         while (sockfd < 0) {
             connect(sockfd, (struct sockaddr*)&serv_addr,
                               sizeof(serv_addr));
         }
-        char * addr = server->h_addr_list[0];
         printf("connected: %d.%d.%d.%d", addr[0], addr[1], addr[2], addr[3]);
     }
     return sockfd;
