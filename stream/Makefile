@@ -1,2 +1,2 @@
-traditional:    traditional.c
-	gcc -std=c99 traditional.c -lpthread -o traditional
+trad:    trad.cpp
+	g++ trad.cpp -lzmq -o trad
