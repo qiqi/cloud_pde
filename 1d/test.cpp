@@ -33,17 +33,6 @@ Variable operator * (double a, Variable x) {
     return x;
 }
 
-class Operator {
-};
-
-Operator& operator >> (Operator& op, Variable v) {
-    return op;
-}
-
-Operator& operator << (Operator& op, Variable v) {
-    return op;
-}
-
 class LocalVariable {
     private:
     double* _val;
@@ -66,28 +55,47 @@ class LocalMesh {
     double dx;
 };
 
-class Laplacian : public Operator {
+typedef void (*LocalOperator)(std::vector<const LocalVariable> inputs,
+             std::vector<LocalVariable> outputs,
+             LocalMesh& mesh);
+
+class Operator {
     public:
-    void compute(std::vector<const LocalVariable> inputs,
-                 std::vector<LocalVariable> outputs,
-                 LocalMesh& mesh) {
-        double u = inputs[0].val();
-        double uL = inputs[0].nbr(0);
-        double uR = inputs[0].nbr(1);
-        outputs[0].val((uL + uR - 2 * u) / (mesh.dx * mesh.dx));
+    Operator (LocalOperator localOp) {
     }
 };
-class Derivative : public Operator {
-};
+
+Operator operator >> (Operator op, Variable v) {
+    return op;
+}
+
+Operator operator << (Operator op, Variable v) {
+    return op;
+}
+
+void laplacian(std::vector<const LocalVariable> inputs,
+             std::vector<LocalVariable> outputs,
+             LocalMesh& mesh) {
+    double u = inputs[0].val();
+    double uL = inputs[0].nbr(0);
+    double uR = inputs[0].nbr(1);
+    outputs[0].val((uL + uR - 2 * u) / (mesh.dx * mesh.dx));
+}
+
+void derivative(std::vector<const LocalVariable> inputs,
+             std::vector<LocalVariable> outputs,
+             LocalMesh& mesh) {
+    double uL = inputs[0].nbr(0);
+    double uR = inputs[0].nbr(1);
+    outputs[0].val((uR - uL) / (2 * mesh.dx));
+}
 
 Variable calcDudt(Variable u) {
-    Laplacian laplacian;
-    Derivative derivative;
-
     Variable uxx, diff, conv;
-    laplacian >> u << uxx;
-    laplacian >> (u + uxx) << diff;
-    derivative >> (0.5 * u * u) << conv;
+
+    Operator(laplacian) >> u << uxx;
+    Operator(laplacian) >> (u + uxx) << diff;
+    Operator(derivative) >> (0.5 * u * u) << conv;
     return -conv - diff;
 }
 
