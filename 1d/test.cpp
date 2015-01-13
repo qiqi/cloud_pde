@@ -1,38 +1,75 @@
-#include "test.h"
+#include "diamond.h"
 
-void laplacian(std::array<const LocalVariable, 1> inputs,
-               std::array<LocalVariable, 1> outputs,
+const double DT = 0.01;
+
+void uxxStep0(std::array<const LocalVariable*, 1> inputs,
+               std::array<LocalVariable*, 2> outputs,
                LocalMesh& mesh) {
-    double u = inputs[0].val();
-    double uL = inputs[0].nbr(0);
-    double uR = inputs[0].nbr(1);
-    outputs[0].val((uL + uR - 2 * u) / (mesh.dx * mesh.dx));
+    const LocalVariable* u = inputs[0];
+    outputs[0]->val(u->val());
+    outputs[1]->val((u->nbr(0) + u->nbr(1) - 2 * u->val())
+                  / (mesh.dx * mesh.dx));
 }
 
-void derivative(std::array<const LocalVariable, 1> inputs,
-                std::array<LocalVariable, 1> outputs,
-                LocalMesh& mesh) {
-    double uL = inputs[0].nbr(0);
-    double uR = inputs[0].nbr(1);
-    outputs[0].val((uR - uL) / (2 * mesh.dx));
+void updateStep0(std::array<const LocalVariable*, 2> inputs,
+                 std::array<LocalVariable*, 2> outputs,
+                 LocalMesh& mesh) {
+    const LocalVariable* u = inputs[0];
+    double conv = (u->nbr(1) - u->nbr(0)) / (2 * mesh.dx);
+    outputs[0]->val(u->val());
+
+    const LocalVariable* uxx = inputs[1];
+    double uPlusUxx = u->val() + uxx->val();
+    double uPlusUxxL = u->nbr(0) + uxx->nbr(0);
+    double uPlusUxxR = u->nbr(1) + uxx->nbr(1);
+    double diff = (uPlusUxxL + uPlusUxxR - 2 * uPlusUxx)
+                / (mesh.dx * mesh.dx);
+
+    double dudt = -conv - diff;
+    outputs[1]->val(u->val() + 0.5 * DT * dudt);
 }
 
-Variable calcDudt(Variable u) {
-    Variable uxx, diff, conv;
+void uxxStep1(std::array<const LocalVariable*, 2> inputs,
+               std::array<LocalVariable*, 3> outputs,
+               LocalMesh& mesh) {
+    const LocalVariable* u = inputs[0];
+    const LocalVariable* uMid = inputs[1];
+    outputs[0]->val(u->val());
+    outputs[1]->val(uMid->val());
+    outputs[2]->val((uMid->nbr(0) + uMid->nbr(1) - 2 * uMid->val())
+                  / (mesh.dx * mesh.dx));
+}
 
-    Operator(laplacian) >> u << uxx;
-    Operator(laplacian) >> (u + uxx) << diff;
-    Operator(derivative) >> (0.5 * u * u) << conv;
-    return -conv - diff;
+void updateStep1(std::array<const LocalVariable*, 3> inputs,
+                 std::array<LocalVariable*, 1> outputs,
+                 LocalMesh& mesh) {
+    const LocalVariable* u = inputs[0];
+    const LocalVariable* uMid = inputs[1];
+    double conv = (uMid->nbr(1) - uMid->nbr(0)) / (2 * mesh.dx);
+
+    const LocalVariable* uxx = inputs[2];
+    double uPlusUxx = uMid->val() + uxx->val();
+    double uPlusUxxL = uMid->nbr(0) + uxx->nbr(0);
+    double uPlusUxxR = uMid->nbr(1) + uxx->nbr(1);
+    double diff = (uPlusUxxL + uPlusUxxR - 2 * uPlusUxx)
+                / (mesh.dx * mesh.dx);
+
+    double dudt = -conv - diff;
+    outputs[1]->val(u->val() + DT * dudt);
+}
+
+void init(std::array<LocalVariable*, 1> u, LocalMesh&) {
+    u[0]->val(0.0);
 }
 
 int main()
 {
-    double dt = 0.01;
-    Variable u;
-    for (int iSteps = 0; iSteps < 100; ++ iSteps) {
-        Variable u2 = u + 0.5* dt * calcDudt(u);
-        u += dt * calcDudt(u2);
+    Mesh mesh(100, 0.01, init);
+    for (int iStep = 0; iStep < 100; ++iStep) {
+        mesh.take(uxxStep0);
+        mesh.take(updateStep0);
+        mesh.take(uxxStep1);
+        mesh.take(updateStep1);
     }
 }
 
