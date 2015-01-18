@@ -64,12 +64,12 @@ void init(std::array<LocalVariable*, 1> u, LocalMesh&) {
 
 int main()
 {
-    Mesh mesh(100, 0.01, init);
+    ClassicDiscretization1D disc(100, 0.01, init);
     for (int iStep = 0; iStep < 100; ++iStep) {
-        mesh.take(uxxStep0);
-        mesh.take(updateStep0);
-        mesh.take(uxxStep1);
-        mesh.take(updateStep1);
+        disc.applyOp(uxxStep0);
+        disc.applyOp(updateStep0);
+        disc.applyOp(uxxStep1);
+        disc.applyOp(updateStep1);
     }
 }
 
