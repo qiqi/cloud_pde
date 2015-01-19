@@ -1,75 +1,86 @@
 #include "diamond.h"
 
-const double DT = 0.01;
+const double DT = 0.005;
 
-void uxxStep0(std::array<const LocalVariable*, 1> inputs,
-               std::array<LocalVariable*, 2> outputs,
-               LocalMesh& mesh) {
-    const LocalVariable* u = inputs[0];
-    outputs[0]->val(u->val());
-    outputs[1]->val((u->nbr(0) + u->nbr(1) - 2 * u->val())
-                  / (mesh.dx * mesh.dx));
+void uxxStep0(const LocalVariables<1>& inputs,
+              LocalVariables<2>& outputs,
+              const LocalMesh& mesh) {
+    double u = inputs.val(0);
+    outputs.val(0, u);
+    double uL = inputs.nbr(0, 0), uR = inputs.nbr(0, 1);
+    double uxx = (uL + uR - 2 * u) / (mesh.dx * mesh.dx);
+    outputs.val(1, uxx);
 }
 
-void updateStep0(std::array<const LocalVariable*, 2> inputs,
-                 std::array<LocalVariable*, 2> outputs,
-                 LocalMesh& mesh) {
-    const LocalVariable* u = inputs[0];
-    double conv = (u->nbr(1) - u->nbr(0)) / (2 * mesh.dx);
-    outputs[0]->val(u->val());
+void updateStep0(const LocalVariables<2>& inputs,
+                 LocalVariables<2>& outputs,
+                 const LocalMesh& mesh) {
+    double u = inputs.val(0);
+    outputs.val(0, u);
 
-    const LocalVariable* uxx = inputs[1];
-    double uPlusUxx = u->val() + uxx->val();
-    double uPlusUxxL = u->nbr(0) + uxx->nbr(0);
-    double uPlusUxxR = u->nbr(1) + uxx->nbr(1);
+    double uL = inputs.nbr(0, 0), uR = inputs.nbr(0, 1);
+    double conv = (uR - uL) / (2 * mesh.dx);
+
+    double uPlusUxx = u + inputs.val(1);
+    double uPlusUxxL = uL + inputs.nbr(1, 0);
+    double uPlusUxxR = uR + inputs.nbr(1, 1);
     double diff = (uPlusUxxL + uPlusUxxR - 2 * uPlusUxx)
                 / (mesh.dx * mesh.dx);
 
     double dudt = -conv - diff;
-    outputs[1]->val(u->val() + 0.5 * DT * dudt);
+    outputs.val(1, u + 0.5 * DT * dudt);
 }
 
-void uxxStep1(std::array<const LocalVariable*, 2> inputs,
-               std::array<LocalVariable*, 3> outputs,
-               LocalMesh& mesh) {
-    const LocalVariable* u = inputs[0];
-    const LocalVariable* uMid = inputs[1];
-    outputs[0]->val(u->val());
-    outputs[1]->val(uMid->val());
-    outputs[2]->val((uMid->nbr(0) + uMid->nbr(1) - 2 * uMid->val())
-                  / (mesh.dx * mesh.dx));
+void uxxStep1(const LocalVariables<2>& inputs,
+              LocalVariables<3>& outputs,
+              const LocalMesh& mesh) {
+    double u0 = inputs.val(0);
+    outputs.val(0, u0);
+
+    double u = inputs.val(1);
+    outputs.val(1, u);
+
+    double uL = inputs.nbr(1, 0), uR = inputs.nbr(1, 1);
+    double uxx = (uL + uR - 2 * u) / (mesh.dx * mesh.dx);
+    outputs.val(2, uxx);
 }
 
-void updateStep1(std::array<const LocalVariable*, 3> inputs,
-                 std::array<LocalVariable*, 1> outputs,
-                 LocalMesh& mesh) {
-    const LocalVariable* u = inputs[0];
-    const LocalVariable* uMid = inputs[1];
-    double conv = (uMid->nbr(1) - uMid->nbr(0)) / (2 * mesh.dx);
+void updateStep1(const LocalVariables<3>& inputs,
+                 LocalVariables<1>& outputs,
+                 const LocalMesh& mesh) {
+    double u0 = inputs.val(0);
 
-    const LocalVariable* uxx = inputs[2];
-    double uPlusUxx = uMid->val() + uxx->val();
-    double uPlusUxxL = uMid->nbr(0) + uxx->nbr(0);
-    double uPlusUxxR = uMid->nbr(1) + uxx->nbr(1);
+    double u = inputs.val(1);
+    double uL = inputs.nbr(1, 0), uR = inputs.nbr(1, 1);
+    double conv = (uR - uL) / (2 * mesh.dx);
+
+    double uPlusUxx = u + inputs.val(2);
+    double uPlusUxxL = uL + inputs.nbr(2, 0);
+    double uPlusUxxR = uR + inputs.nbr(2, 1);
     double diff = (uPlusUxxL + uPlusUxxR - 2 * uPlusUxx)
                 / (mesh.dx * mesh.dx);
 
     double dudt = -conv - diff;
-    outputs[1]->val(u->val() + DT * dudt);
+    outputs.val(0, u0 + 0.5 * DT * dudt);
 }
 
-void init(std::array<LocalVariable*, 1> u, LocalMesh&) {
-    u[0]->val(0.0);
+void init(LocalVariables<1>& u, const LocalMesh& mesh) {
+    u.val(0, mesh.x);
 }
 
 int main()
 {
-    ClassicDiscretization1D disc(100, 0.01, init);
-    for (int iStep = 0; iStep < 100; ++iStep) {
-        disc.applyOp(uxxStep0);
-        disc.applyOp(updateStep0);
-        disc.applyOp(uxxStep1);
-        disc.applyOp(updateStep1);
+    ClassicDiscretization1D disc(128 * 2, 0.5, init);
+    disc.colorMap.red.set(0, 0., 128.);
+    for (int iPng = 0; iPng < 200; ++iPng) {
+        for (int iStep = 0; iStep < 500; ++iStep) {
+            disc.applyOp(uxxStep0);
+            disc.applyOp(updateStep0);
+            disc.applyOp(uxxStep1);
+            disc.applyOp(updateStep1);
+        }
+        disc.variablesToColor(iPng);
+        disc.writePng("test.png");
     }
 }
 
