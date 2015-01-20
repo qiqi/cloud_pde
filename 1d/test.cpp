@@ -87,7 +87,7 @@ int main()
             disc.applyOp(updateStep1);
         }
         disc.variablesToColor(iPixel);
-        disc.writePng("test.png");
+        disc.writePng("test");
     }
 
     std::clock_t endTime = std::clock();

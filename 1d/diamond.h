@@ -2,8 +2,29 @@
 #include<cstring>
 #include<array>
 #include<cassert>
+#include<cstdlib>
 #include<cmath>
+#include<mpi.h>
 #include"PngWriter.hpp"
+
+const char* mpiRankString() {
+    static char mpiRankStr[256] = "";
+    if (mpiRankStr[0] == 0) {
+        int iProc, numProc;
+        MPI_Comm_size(MPI_COMM_WORLD, &numProc);
+        MPI_Comm_rank(MPI_COMM_WORLD, &iProc);
+
+        sprintf(mpiRankStr, "%d", numProc);
+        int maxStrLen = strlen(mpiRankStr);
+
+        sprintf(mpiRankStr, "%d", iProc);
+        int strLen = strlen(mpiRankStr);
+        int padLen = maxStrLen - strLen;
+        memmove(mpiRankStr + padLen, mpiRankStr, strLen + 1);
+        memset(mpiRankStr, '0', padLen);
+    }
+    return mpiRankStr;
+}
 
 template<size_t numVar>
 class LocalVariables {
@@ -64,6 +85,11 @@ class LocalVariables1D : public LocalVariables<numVar> {
     public:
     LocalVariables1D() : _pVal(0), _pValL(0), _pValR(0) {}
 
+    LocalVariables1D(double* pVal) : _pVal(pVal), _pValL(0), _pValR(0) {}
+
+    LocalVariables1D(double* pVal, double* pValL, double* pValR)
+        : _pVal(pVal), _pValL(pValL), _pValR(pValR) {}
+
     void assignPointers(double* pVal, double* pValL, double* pValR) {
         _pVal = pVal; _pValL = pValL; _pValR = pValR;
     }
@@ -95,22 +121,94 @@ class ClassicDiscretization1D {
     private:
     int _numGrids;
     double _dx;
+    double _x0;
     int _numVariables;
     double * _variablesData;
 
     char* _pngFilename;
     PngWriter _png;
 
+    void _commonInit() {
+        MPI_Init(0, 0);
+
+        int iProc;
+        MPI_Comm_rank(MPI_COMM_WORLD, &iProc);
+        _x0 = _numGrids * _dx * iProc;
+    }
+
     public:
     ClassicDiscretization1D()
-        : _variablesData(0), _pngFilename(0), _png(0,0) {}
+    : _numGrids(100), _dx(1.), 
+      _variablesData(0), _pngFilename(0), _png(0,0)
+    {
+        _commonInit();
+    }
 
     virtual ~ClassicDiscretization1D() {
         if (_variablesData) {
             delete _variablesData;
         }
+        MPI_Finalize();
     }
 
+    private:
+    template<size_t numVar>
+    inline void _applyInitialization(
+         void (&localOperator)(
+               LocalVariables<numVar>&, const LocalMesh&),
+         double *data, int iGrid)
+    {
+        double (*pData)[numVar] = (double (*)[numVar]) data;
+        LocalVariables1D<numVar> localVars(pData[iGrid]);
+        LocalMesh localMesh(_x0 + iGrid * _dx, _dx);
+        localOperator(localVars, localMesh);
+    }
+
+    template<size_t numVar>
+    class _Syncer {
+        private:
+        double (*_data)[numVar];
+        int _numGrids;
+        MPI_Request _reqs[4];
+    
+        public:
+        _Syncer(double * data, int numGrids)
+        : _data((double(*)[numVar])data), _numGrids(numGrids)
+        {
+            static int numProc, iProc, iProcLeft, iProcRight;
+                // static vars are auto-initialized to 0
+            if (numProc == 0) {
+                MPI_Comm_rank(MPI_COMM_WORLD, &iProc);
+                MPI_Comm_size(MPI_COMM_WORLD, &numProc);
+                iProcLeft = (iProc + numProc - 1) % numProc;
+                iProcRight = (iProc + 1) % numProc;
+            }
+    
+            const int iGridLeft = 1, iGridRight = _numGrids;
+            MPI_Isend(_data[iGridLeft], numVar, MPI_DOUBLE,
+                      iProcLeft, 0, MPI_COMM_WORLD, _reqs);
+            MPI_Isend(_data[iGridRight], numVar, MPI_DOUBLE,
+                      iProcRight, 1, MPI_COMM_WORLD, _reqs + 1);
+    
+            const int iGridLeftGhost = 0, iGridRightGhost = _numGrids + 1;
+            MPI_Irecv(_data[iGridRightGhost], numVar, MPI_DOUBLE,
+                      iProcRight, 0, MPI_COMM_WORLD, _reqs + 2);
+            MPI_Irecv(_data[iGridLeftGhost], numVar, MPI_DOUBLE,
+                      iProcLeft, 1, MPI_COMM_WORLD, _reqs + 3);
+        }
+    
+        void waitTillDone() {
+            MPI_Status stats[4];
+            MPI_Waitall(4, _reqs, stats);
+        }
+    
+        ~_Syncer() {
+            waitTillDone();
+        }
+    };
+
+
+    public:
     template<size_t numVar>
     ClassicDiscretization1D(int numGrids, double dx,
          void (&localOperator)(
@@ -119,16 +217,43 @@ class ClassicDiscretization1D {
         _numGrids(numGrids), _dx(dx), _numVariables(numVar),
         _pngFilename(0), _png(0,0)
     {
-        _variablesData = new double[numVar * _numGrids];
+        _commonInit();
+        _variablesData = new double[numVar * (_numGrids + 2)];
     
-        LocalVariables1D<numVar> localVars;
-        for (int iGrid = 0; iGrid < _numGrids; ++iGrid) {
-            localVars.assignPointers(_variablesData + iGrid * numVar, 0, 0);
-            LocalMesh localMesh(iGrid * _dx, _dx);
-            localOperator(localVars, localMesh);
+        const int iGridLeft = 1, iGridRight = _numGrids;
+        _applyInitialization(localOperator, _variablesData, iGridLeft);
+        _applyInitialization(localOperator, _variablesData, iGridRight);
+
+        _Syncer<numVar> sync(_variablesData, _numGrids);
+
+        for (int iGrid = iGridLeft + 1; iGrid < iGridRight; ++iGrid) {
+            _applyInitialization(localOperator, _variablesData, iGrid);
         }
+
+        sync.waitTillDone();
     }
 
+    private:
+    template<size_t numInput, size_t numOutput>
+    void _applyLocalOp(void (&localOperator)(
+                     const LocalVariables<numInput>& inputs,
+                     LocalVariables<numOutput>& outputs,
+                     const LocalMesh& mesh),
+                 double * input, double * output, int iGrid)
+    {
+        double (*pInput)[numInput] = (double(*)[numInput])input;
+        double (*pOutput)[numOutput] = (double(*)[numOutput])output;
+
+        LocalVariables1D<numInput> localInputs(pInput[iGrid],
+                                               pInput[iGrid - 1],
+                                               pInput[iGrid + 1]);
+        LocalVariables1D<numOutput> localOutputs(pOutput[iGrid]);
+        LocalMesh localMesh(iGrid * _dx, _dx);
+
+        localOperator(localInputs, localOutputs, localMesh);
+    }
+
+    public:
     template<size_t numInput, size_t numOutput>
     void applyOp(void (&localOperator)(
                  const LocalVariables<numInput>& inputs,
@@ -136,33 +261,29 @@ class ClassicDiscretization1D {
                  const LocalMesh& mesh))
     {
         assert(numInput == _numVariables);
-        double * newVariablesData = new double[numOutput * _numGrids];
+        double * newVariablesData = new double[numOutput * (_numGrids + 2)];
 
-        LocalVariables1D<numInput> localInputs;
-        LocalVariables1D<numOutput> localOutputs;
+        const int iGridLeft = 1, iGridRight = _numGrids;
 
-        for (int iGrid = 0; iGrid < _numGrids; ++iGrid) {
-            double * pInput = _variablesData + iGrid * numInput;
+        _applyLocalOp(localOperator, _variablesData, newVariablesData, iGridLeft);
+        _applyLocalOp(localOperator, _variablesData, newVariablesData, iGridRight);
 
-            int iGridLeft = (iGrid + _numGrids - 1) % _numGrids;
-            double * pInputL = _variablesData + iGridLeft * numInput;
+        _Syncer<numOutput> sync(newVariablesData, _numGrids);
 
-            int iGridRight = (iGrid + 1) % _numGrids;
-            double * pInputR = _variablesData + iGridRight * numInput;
-
-            localInputs.assignPointers(pInput, pInputL, pInputR);
-
-            double * pOutput = newVariablesData + iGrid * numOutput;
-            localOutputs.assignPointers(pOutput, 0,0);
-
-            LocalMesh localMesh(iGrid * _dx, _dx);
-            localOperator(localInputs, localOutputs, localMesh);
+        for (int iGrid = iGridLeft + 1; iGrid < iGridRight; ++iGrid) {
+            _applyLocalOp(localOperator, _variablesData, newVariablesData, iGrid);
         }
 
         delete[] _variablesData;
         _variablesData = newVariablesData;
         _numVariables = numOutput;
+
+        sync.waitTillDone();
     }
+
+    // ------------ write to png file ------------- //
+
+    public:
 
     struct {
         class _VarColor {
@@ -216,8 +337,11 @@ class ClassicDiscretization1D {
         if (_pngFilename) {
             delete[] _pngFilename;
         }
-        _pngFilename = new char[strlen(filename) + 1];
+
+        _pngFilename = new char[strlen(filename) + strlen(mpiRankString()) + 5];
         strcpy(_pngFilename, filename);
+        strcat(_pngFilename, mpiRankString());
+        strcat(_pngFilename, ".png");
         writePng();
     }
 
