@@ -74,7 +74,7 @@ int main()
 {
     const int nStepsPerPixel = 1000, nPixel = 100;
 
-    ClassicDiscretization1D disc(16, 0.5, init);
+    ClassicDiscretization1D disc(32, 0.5, init);
     disc.colorMap.red.set(0, -2., 2.);
 
     std::clock_t startTime = std::clock();
