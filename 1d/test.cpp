@@ -1,6 +1,6 @@
 #include <cmath>
 #include <ctime>
-#include "diamond.h"
+#include "classic_scheme.h"
 
 const double DT = 0.005;
 
