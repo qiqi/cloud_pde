@@ -73,9 +73,9 @@ void init(LocalOutputs<1>& u, const LocalMesh& mesh) {
 
 int main()
 {
-    const int nStepsPerPixel = 1000, nPixel = 100;
+    const int nStepsPerPixel = 1000, nPixel = 10;
 
-    DiamondDiscretization1D disc(32, 0.5, init);
+    ClassicDiscretization1D disc(512, 0.5, init);
     // disc.colorMap.red.set(0, -2., 2.);
 
     std::clock_t startTime = std::clock();

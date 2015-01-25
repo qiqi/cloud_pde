@@ -113,21 +113,21 @@ class LocalVariablesQueue {
         assert(!_hasSendOrRecvBeenCalled);
         _hasSendOrRecvBeenCalled = 1;
         MPI_Irecv(_pData, _maxBytes, MPI_BYTE, iProc, tag, MPI_COMM_WORLD, &_req);
-        std::cout << "Irecv()..." << _req << " iProc:" << iProc << ",Tag:" << tag << std::endl;
+        // std::cout << "Irecv()..." << _req << " iProc:" << iProc << ",Tag:" << tag << std::endl;
     }
 
     void Isend(int iProc, int tag) {
         assert(!_hasSendOrRecvBeenCalled);
         _hasSendOrRecvBeenCalled = 1;
         MPI_Isend(_pData, _maxBytes, MPI_BYTE, iProc, tag, MPI_COMM_WORLD, &_req);
-        std::cout << "Isend()..." << _req << " iProc:" << iProc << ",Tag:" << tag << std::endl;
+        // std::cout << "Isend()..." << _req << " iProc:" << iProc << ",Tag:" << tag << std::endl;
     }
 
     void waitForSendOrRecv() {
         assert(_hasSendOrRecvBeenCalled);
-        std::cout << "waitForSendOrRecv()..." << _req << std::endl;
+        // std::cout << "waitForSendOrRecv()..." << _req << std::endl;
         MPI_Wait(&_req, MPI_STATUS_IGNORE);
-        std::cout << "waitForSendOrRecv() done." << std::endl;
+        // std::cout << "waitForSendOrRecv() done." << std::endl;
     }
 
     int isSendOrRecvComplete() {
@@ -328,7 +328,7 @@ class Diamond1D {
         _localMeshes(firstGrid, lastGrid),
         _localOperators(firstOp, lastOp)
     {
-        std::cout << "Creating Diamond with initial data" << std::endl;
+        // std::cout << "Creating Diamond with initial data" << std::endl;
 
         assert(_localMeshes.size() == _localOperators.size() * 2);
         _numVariables = numVar;
@@ -392,7 +392,7 @@ class Diamond1D {
         _localMeshes(firstGrid, lastGrid),
         _localOperators(firstOp, lastOp)
     {
-        std::cout << "Creating full Diamond" << std::endl;
+        // std::cout << "Creating full Diamond" << std::endl;
 
         assert(_localMeshes.size() % 2 == 0);
         assert(_localMeshes.size() == _localOperators.size() + 1);
@@ -408,7 +408,7 @@ class Diamond1D {
     void compute(int iProcLeftRoofGoesTo, int tagLeftRoofGoesTo,
                  int iProcRightRoofGoesTo, int tagRightRoofGoesTo)
     {
-        std::cout << "Computing Diamond" << std::endl;
+        // std::cout << "Computing Diamond" << std::endl;
 
         if (_pLeftFoundation && _pRightFoundation) {
             _pLeftFoundation->waitForSendOrRecv();
@@ -424,7 +424,7 @@ class Diamond1D {
         _pLeftRoof->Isend(iProcLeftRoofGoesTo, tagLeftRoofGoesTo);
         _pRightRoof->Isend(iProcRightRoofGoesTo, tagRightRoofGoesTo);
 
-        std::cout << "Finish computing Diamond" << std::endl;
+        // std::cout << "Finish computing Diamond" << std::endl;
     }
 
     bool isSendComplete() {
