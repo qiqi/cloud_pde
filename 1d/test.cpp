@@ -1,11 +1,11 @@
 #include <cmath>
 #include <ctime>
-#include "classic_scheme.h"
+#include "diamond_scheme.h"
 
 const double DT = 0.005;
 
-void uxxStep0(const LocalVariables<1>& inputs,
-              LocalVariables<2>& outputs,
+void uxxStep0(const LocalInputs<1>& inputs,
+              LocalOutputs<2>& outputs,
               const LocalMesh& mesh) {
     double u = inputs.val(0);
     outputs.val(0, u);
@@ -14,8 +14,8 @@ void uxxStep0(const LocalVariables<1>& inputs,
     outputs.val(1, uxx);
 }
 
-void updateStep0(const LocalVariables<2>& inputs,
-                 LocalVariables<2>& outputs,
+void updateStep0(const LocalInputs<2>& inputs,
+                 LocalOutputs<2>& outputs,
                  const LocalMesh& mesh) {
     double u = inputs.val(0);
     outputs.val(0, u);
@@ -33,8 +33,8 @@ void updateStep0(const LocalVariables<2>& inputs,
     outputs.val(1, u + 0.5 * DT * dudt);
 }
 
-void uxxStep1(const LocalVariables<2>& inputs,
-              LocalVariables<3>& outputs,
+void uxxStep1(const LocalInputs<2>& inputs,
+              LocalOutputs<3>& outputs,
               const LocalMesh& mesh) {
     double u0 = inputs.val(0);
     outputs.val(0, u0);
@@ -47,8 +47,8 @@ void uxxStep1(const LocalVariables<2>& inputs,
     outputs.val(2, uxx);
 }
 
-void updateStep1(const LocalVariables<3>& inputs,
-                 LocalVariables<1>& outputs,
+void updateStep1(const LocalInputs<3>& inputs,
+                 LocalOutputs<1>& outputs,
                  const LocalMesh& mesh) {
     double u0 = inputs.val(0);
 
@@ -65,7 +65,7 @@ void updateStep1(const LocalVariables<3>& inputs,
     double dudt = -conv - diff;
     outputs.val(0, u0 + 0.5 * DT * dudt);
 }
-void init(LocalVariables<1>& u, const LocalMesh& mesh) {
+void init(LocalOutputs<1>& u, const LocalMesh& mesh) {
     const double PI = atan(1.0) * 4;
     u.val(0, cos(mesh.x / 128. * 19 * PI) * 2.);
 }
@@ -74,8 +74,8 @@ int main()
 {
     const int nStepsPerPixel = 1000, nPixel = 100;
 
-    ClassicDiscretization1D disc(32, 0.5, init);
-    disc.colorMap.red.set(0, -2., 2.);
+    DiamondDiscretization1D disc(32, 0.5, init);
+    // disc.colorMap.red.set(0, -2., 2.);
 
     std::clock_t startTime = std::clock();
 
@@ -86,8 +86,8 @@ int main()
             disc.applyOp(uxxStep1);
             disc.applyOp(updateStep1);
         }
-        disc.variablesToColor(iPixel);
-        disc.writePng("test");
+        // disc.variablesToColor(iPixel);
+        // disc.writePng("test");
     }
 
     std::clock_t endTime = std::clock();

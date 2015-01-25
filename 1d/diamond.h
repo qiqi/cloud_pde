@@ -10,11 +10,16 @@
 // ====== common interface for local schemes ======= //
 //
 template<size_t numVar>
-class LocalVariables {
+class LocalInputs {
     public:
     virtual double val(int iVar) const = 0;
-    virtual void val(int iVar, double newVal) = 0;
     virtual double nbr(int iVar, int iNbr) const = 0;
+};
+
+template<size_t numVar>
+class LocalOutputs {
+    public:
+    virtual void val(int iVar, double newVal) = 0;
 };
 
 struct LocalMesh {
@@ -30,12 +35,12 @@ class Discretization {
     template<size_t numVar>
     Discretization(int numGrids, double dx,
          void (&localOperator)(
-               LocalVariables<numVar>&, const LocalMesh&));
+               LocalOutputs<numVar>&, const LocalMesh&));
 
     template<size_t numInput, size_t numOutput>
     void applyOp(void (&localOperator)(
-                 const LocalVariables<numInput>& inputs,
-                 LocalVariables<numOutput>& outputs,
+                 const LocalInputs<numInput>& inputs,
+                 LocalOutputs<numOutput>& outputs,
                  const LocalMesh& mesh));
 };
 
@@ -61,31 +66,23 @@ const char* mpiRankString() {
 }
 
 template<size_t numVar>
-class LocalVariables1D : public LocalVariables<numVar> {
+class LocalInputs1D : public LocalInputs<numVar> {
     private:
-    double *_pVal, *_pValL, *_pValR;
+    const double *_pVal, *_pValL, *_pValR;
 
     public:
-    LocalVariables1D() : _pVal(0), _pValL(0), _pValR(0) {}
+    LocalInputs1D() : _pVal(0), _pValL(0), _pValR(0) {}
 
-    LocalVariables1D(double* pVal) : _pVal(pVal), _pValL(0), _pValR(0) {}
-
-    LocalVariables1D(double* pVal, double* pValL, double* pValR)
+    LocalInputs1D(const double* pVal, const double* pValL, const double* pValR)
         : _pVal(pVal), _pValL(pValL), _pValR(pValR) {}
-
-    void assignPointers(double* pVal, double* pValL, double* pValR) {
-        _pVal = pVal; _pValL = pValL; _pValR = pValR;
-    }
 
     virtual double val(int iVar) const {
         assert(_pVal);
+        assert(iVar < numVar);
         return _pVal[iVar];
     }
-    virtual void val(int iVar, double newVal) {
-        assert(_pVal);
-        _pVal[iVar] = newVal;
-    }
     virtual double nbr(int iVar, int iNbr) const {
+        assert(iVar < numVar);
         switch(iNbr) {
             case 0:
                 assert(_pValL);
@@ -97,6 +94,23 @@ class LocalVariables1D : public LocalVariables<numVar> {
                 assert(0);
                 return nan("");
         }
+    }
+};
+
+template<size_t numVar>
+class LocalOutputs1D : public LocalOutputs<numVar> {
+    private:
+    double *_pVal;
+
+    public:
+    LocalOutputs1D() : _pVal(0) {}
+
+    LocalOutputs1D(double* pVal) : _pVal(pVal) {}
+
+    virtual void val(int iVar, double newVal) {
+        assert(_pVal);
+        assert(iVar < numVar);
+        _pVal[iVar] = newVal;
     }
 };
 

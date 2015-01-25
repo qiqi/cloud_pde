@@ -240,7 +240,6 @@ class ClassicDiscretization1D {
         strcat(_pngFilename, ".png");
         writePng();
     }
-
 };
 
 #endif
