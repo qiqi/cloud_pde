@@ -51,11 +51,11 @@ class ClassicDiscretization1D {
     template<size_t numVar>
     inline void _applyInitialization(
          void (&localOperator)(
-               LocalVariables<numVar>&, const LocalMesh&),
+               LocalOutputs<numVar>&, const LocalMesh&),
          double *data, int iGrid)
     {
         double (*pData)[numVar] = (double (*)[numVar]) data;
-        LocalVariables1D<numVar> localVars(pData[iGrid]);
+        LocalOutputs1D<numVar> localVars(pData[iGrid]);
         LocalMesh localMesh(_x0 + iGrid * _dx, _dx);
         localOperator(localVars, localMesh);
     }
@@ -108,7 +108,7 @@ class ClassicDiscretization1D {
     template<size_t numVar>
     ClassicDiscretization1D(int numGrids, double dx,
          void (&localOperator)(
-               LocalVariables<numVar>&, const LocalMesh&))
+               LocalOutputs<numVar>&, const LocalMesh&))
     :
         _numGrids(numGrids), _dx(dx), _numVariables(numVar),
         _pngFilename(0), _png(0,0)
@@ -132,18 +132,18 @@ class ClassicDiscretization1D {
     private:
     template<size_t numInput, size_t numOutput>
     void _applyLocalOp(void (&localOperator)(
-                     const LocalVariables<numInput>& inputs,
-                     LocalVariables<numOutput>& outputs,
+                     const LocalInputs<numInput>& inputs,
+                     LocalOutputs<numOutput>& outputs,
                      const LocalMesh& mesh),
                  double * input, double * output, int iGrid)
     {
         double (*pInput)[numInput] = (double(*)[numInput])input;
         double (*pOutput)[numOutput] = (double(*)[numOutput])output;
 
-        LocalVariables1D<numInput> localInputs(pInput[iGrid],
+        LocalInputs1D<numInput> localInputs(pInput[iGrid],
                                                pInput[iGrid - 1],
                                                pInput[iGrid + 1]);
-        LocalVariables1D<numOutput> localOutputs(pOutput[iGrid]);
+        LocalOutputs1D<numOutput> localOutputs(pOutput[iGrid]);
         LocalMesh localMesh(iGrid * _dx, _dx);
 
         localOperator(localInputs, localOutputs, localMesh);
@@ -152,8 +152,8 @@ class ClassicDiscretization1D {
     public:
     template<size_t numInput, size_t numOutput>
     void applyOp(void (&localOperator)(
-                 const LocalVariables<numInput>& inputs,
-                 LocalVariables<numOutput>& outputs,
+                 const LocalInputs<numInput>& inputs,
+                 LocalOutputs<numOutput>& outputs,
                  const LocalMesh& mesh))
     {
         assert(numInput == _numVariables);

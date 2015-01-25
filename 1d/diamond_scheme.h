@@ -113,17 +113,21 @@ class LocalVariablesQueue {
         assert(!_hasSendOrRecvBeenCalled);
         _hasSendOrRecvBeenCalled = 1;
         MPI_Irecv(_pData, _maxBytes, MPI_BYTE, iProc, tag, MPI_COMM_WORLD, &_req);
+        std::cout << "Irecv()..." << _req << " iProc:" << iProc << ",Tag:" << tag << std::endl;
     }
 
     void Isend(int iProc, int tag) {
         assert(!_hasSendOrRecvBeenCalled);
         _hasSendOrRecvBeenCalled = 1;
         MPI_Isend(_pData, _maxBytes, MPI_BYTE, iProc, tag, MPI_COMM_WORLD, &_req);
+        std::cout << "Isend()..." << _req << " iProc:" << iProc << ",Tag:" << tag << std::endl;
     }
 
     void waitForSendOrRecv() {
         assert(_hasSendOrRecvBeenCalled);
+        std::cout << "waitForSendOrRecv()..." << _req << std::endl;
         MPI_Wait(&_req, MPI_STATUS_IGNORE);
+        std::cout << "waitForSendOrRecv() done." << std::endl;
     }
 
     int isSendOrRecvComplete() {
@@ -230,7 +234,7 @@ class Diamond1D {
         }
     }
 
-    void dequeueTwoGrids(LocalVariablesQueue* pFoundation, double * pData)
+    void _dequeueTwoGrids(LocalVariablesQueue* pFoundation, double * pData)
     {
         size_t numVar = pFoundation->dequeue(pData);
         assert(_numVariables == numVar);
@@ -238,12 +242,24 @@ class Diamond1D {
         assert(_numVariables == numVar);
     }
 
-    void _computeFirstHalf() {
+    bool _isHalfDiamond() {
+        if (_localMeshes.size() == _localOperators.size() + 1) {
+            return false;
+        } else {
+            assert(_localMeshes.size() == _localOperators.size() * 2);
+            return true;
+        }
+    }
+
+    void _computeFirstHalf() 
+    {
+        assert(!_isHalfDiamond());
+
         const size_t nGrid = _localMeshes.size();
         _numVariables = _localOperators[0]->numInputs();
         _variablesData = new double[_numVariables * (nGrid + 2)];
-        dequeueTwoGrids(_pLeftFoundation, _varAtGrid(nGrid / 2 - 1));
-        dequeueTwoGrids(_pRightFoundation, _varAtGrid(nGrid / 2 + 1));
+        _dequeueTwoGrids(_pLeftFoundation, _varAtGrid(nGrid / 2 - 1));
+        _dequeueTwoGrids(_pRightFoundation, _varAtGrid(nGrid / 2 + 1));
 
         size_t lastStep = nGrid/2 - 2;
         for (size_t iStep = 0; iStep <= lastStep; ++ iStep)
@@ -259,8 +275,8 @@ class Diamond1D {
             _variablesData = pOutput;
             _numVariables = numOutput;
 
-            dequeueTwoGrids(_pLeftFoundation, _varAtGrid(iFirst - 2));
-            dequeueTwoGrids(_pRightFoundation, _varAtGrid(iLast + 1));
+            _dequeueTwoGrids(_pLeftFoundation, _varAtGrid(iFirst - 2));
+            _dequeueTwoGrids(_pRightFoundation, _varAtGrid(iLast + 1));
         }
     }
 
@@ -275,6 +291,11 @@ class Diamond1D {
         const size_t nGrid = _localMeshes.size();
 
         size_t firstStep = nGrid/2 - 1, lastStep = nGrid - 2;
+        if (_isHalfDiamond()) {
+            lastStep -= firstStep;
+            firstStep = 0;
+        }
+
         for (size_t iStep = firstStep; iStep <= lastStep; ++ iStep)
         {
             assert(_numVariables == _localOperators[iStep]->numInputs());
@@ -327,21 +348,32 @@ class Diamond1D {
     private:
     size_t _foundationBytes()
     {
-        size_t foundationBytes = 0;
-        for (size_t iOp = 0; iOp < _localMeshes.size() / 2; ++iOp) {
-            size_t localVarBytes = 
-                + sizeof(double) * _localOperators[iOp]->numInputs();
-            foundationBytes += localVarBytes * 2;
+        if (_isHalfDiamond()) {
+            return 0;
+        } else {
+            size_t foundationBytes = 0;
+            for (size_t iOp = 0; iOp < _localMeshes.size() / 2; ++iOp) {
+                size_t localVarBytes = sizeof(size_t)
+                    + sizeof(double) * _localOperators[iOp]->numInputs();
+                foundationBytes += localVarBytes * 2;
+            }
+            return foundationBytes;
         }
-        return foundationBytes;
     }
 
     size_t _roofBytes()
     {
+        size_t firstOp = _localMeshes.size() / 2 - 1;
+        size_t lastOp = _localMeshes.size() - 2;
+
+        if (_isHalfDiamond()) {
+            lastOp -= firstOp;
+            firstOp = 0;
+        }
+
         size_t roofBytes = 0;
-        for (size_t iOp = _localMeshes.size() / 2 - 1;
-                iOp < _localMeshes.size() - 1; ++iOp) {
-            size_t localVarBytes = 
+        for (size_t iOp = firstOp; iOp <= lastOp; ++iOp) {
+            size_t localVarBytes = sizeof(size_t)
                 + sizeof(double) * _localOperators[iOp]->numOutputs();
             roofBytes += localVarBytes * 2;
         }
@@ -486,7 +518,7 @@ class DiamondDiscretization1D {
                                    _localOperators.end(),
                                    iProcLeft(), tagRightwards,
                                    iProc(), tagToSelf);
-            _lastDiamondOnTheLeft = false;
+            _lastDiamondOnTheLeft = true;
             _diamonds.back().compute(iProcLeft(), tagLeftwards,
                                      iProc(), tagToSelf);
         }
