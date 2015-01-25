@@ -1,9 +1,9 @@
 #!/bin/bash
-#SBATCH --job-name=diamond
+#SBATCH --job-name=kuramotoDiamondTest
 #SBATCH --workdir=/master/home/qiqi/git/cloud_pde/1d
-#SBATCH --output=test.out
-#SBATCH --error=test.err
-#SBATCH --nodes=1
+#SBATCH --output=kuramotoDiamondTest.out
+#SBATCH --error=kuramotoDiamondTest.err
+#SBATCH --nodes=8
 #SBATCH --ntasks-per-node=4
  
 make run
