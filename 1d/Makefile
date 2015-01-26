@@ -21,6 +21,11 @@ run:	kuramoto_classic kuramoto_diamond
 	mpirun ./kuramoto_classic 256
 	mpirun ./kuramoto_classic 512
 	mpirun ./kuramoto_classic 1024
+	mpirun ./kuramoto_classic 2048
+	mpirun ./kuramoto_classic 4096
+	mpirun ./kuramoto_classic 8192
+	mpirun ./kuramoto_classic 16384
+	mpirun ./kuramoto_classic 32768
 	mpirun ./kuramoto_diamond 8
 	mpirun ./kuramoto_diamond 16
 	mpirun ./kuramoto_diamond 32
@@ -29,6 +34,11 @@ run:	kuramoto_classic kuramoto_diamond
 	mpirun ./kuramoto_diamond 256
 	mpirun ./kuramoto_diamond 512
 	mpirun ./kuramoto_diamond 1024
+	mpirun ./kuramoto_diamond 2048
+	mpirun ./kuramoto_diamond 4096
+	mpirun ./kuramoto_diamond 8192
+	mpirun ./kuramoto_diamond 16384
+	mpirun ./kuramoto_diamond 32768
 
 clean:
 	rm -f *.o kuramoto_diamond kuramoto_classic
