@@ -1,16 +1,16 @@
 default:	kuramoto_classic kuramoto_diamond
 
 kuramoto_classic:	kuramoto_classic.o
-	mpic++ -O0 -g -o kuramoto_classic kuramoto_classic.o -L/master/home/qiqi/lib -lpng
+	mpic++ -O3 -o kuramoto_classic kuramoto_classic.o -L/master/home/qiqi/lib -lpng
 
-kuramoto_diamond:	kuramoto_diamond.o
-	mpic++ -O0 -g -o kuramoto_diamond kuramoto_diamond.o -L/master/home/qiqi/lib -lpng
+kuramoto_diamond:    kuramoto_diamond.o
+	mpic++ -O3 -o kuramoto_diamond kuramoto_diamond.o -L/master/home/qiqi/lib -lpng
 
-kuramoto_classic.o:	kuramoto_classic.cpp kuramoto.h classic_scheme.h diamond.h PngWriter.hpp
-	mpic++ -O0 -g -std=c++11 -I/master/home/qiqi/include/libpng16 -c $< 
+kuramoto_classic.o:  kuramoto_classic.cpp kuramoto.h classic_scheme.h diamond.h PngWriter.hpp
+	mpic++ -O3 -std=c++11 -I/master/home/qiqi/include/libpng16 -c $< 
 
-kuramoto_diamond.o:	kuramoto_diamond.cpp kuramoto.h diamond_scheme.h diamond.h PngWriter.hpp
-	mpic++ -O0 -g -std=c++11 -I/master/home/qiqi/include/libpng16 -c $< 
+kuramoto_diamond.o:  kuramoto_diamond.cpp kuramoto.h diamond_scheme.h diamond.h PngWriter.hpp
+	mpic++ -O3 -std=c++11 -I/master/home/qiqi/include/libpng16 -c $< 
 
 run:	kuramoto_classic kuramoto_diamond
 	mpirun ./kuramoto_classic 8
