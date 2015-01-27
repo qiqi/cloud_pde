@@ -4,7 +4,6 @@
 #include<vector>
 #include<deque>
 #include<cstring>
-#include<array>
 #include<cassert>
 #include<cstdlib>
 #include<cmath>

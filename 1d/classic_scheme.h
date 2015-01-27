@@ -3,7 +3,6 @@
 
 #include<vector>
 #include<cstring>
-#include<array>
 #include<cassert>
 #include<cstdlib>
 #include<cmath>
